@@ -31,10 +31,10 @@ func (bot Bot) pack(middle []CQEventHandler) func(w http.ResponseWriter, r *http
 		bytedata, _ := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		// 封装事件
-		ctx := context.WithValue(r.Context(), WriterKey, &w)
+		ctx := context.WithValue(r.Context(), WriterKey, w)
 		ctx = context.WithValue(ctx, RequestKey, r)
 		ctx = context.WithValue(ctx, ByteData, bytedata)
-		event := newEvent(ctx, bot)
+		event := newEvent(ctx)		
 		event.handler = middle
 		event.hlength = len(middle)
 		// 传递中间件
@@ -66,7 +66,7 @@ func (bot *Bot) ParseMessage(event *CQEvent){
 func (bot Bot) signature(event *CQEvent){
 	sig := event.reqHeader().Get("X-Signature")
 	if sig == "" {
-		log.Println("未找到头部信息")
+		log.Println("未找到头部信息，请检查CQHTTP配置")
 		return
 	}
 	sig = sig[len("sha1="):]
@@ -75,12 +75,9 @@ func (bot Bot) signature(event *CQEvent){
 
 	io.WriteString(mac, string(byteData))
 	res := fmt.Sprintf("%x", mac.Sum(nil))
-	log.Printf("CQ HMAC:%s, Amy HMAC:%s\n", sig, res)
-	if res == sig {
-		log.Println("消息来自酷Q")
-	}else{
+	if res != sig {
 		log.Println("消息不来自酷Q，已屏蔽处理")
 		return
-	}		
+	}	
 	event.Next()
 }

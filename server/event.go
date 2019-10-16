@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"context"
 	"net/http"
+	"bytes"
 )
 
 // CQEvent 酷Q上报事件结构
 type CQEvent struct {
-	Bot Bot
 	Type string
 	writer http.ResponseWriter
 	req *http.Request
@@ -21,13 +21,12 @@ type CQEvent struct {
 type CQEventHandler func(receive *CQEvent)
 
 // newEvent 生成一个新的事件
-func newEvent(ctx context.Context, bot Bot) CQEvent{
+func newEvent(ctx context.Context) CQEvent{
 	var res CQEvent
 	res.ctx = ctx
-	res.Bot = bot
 	wdata := res.ctx.Value(WriterKey)
-	if w, ok := wdata.(*http.ResponseWriter); ok{
-		res.writer = *w
+	if w, ok := wdata.(http.ResponseWriter); ok{
+		res.writer = w
 	}
 	rdata := res.ctx.Value(RequestKey)
 	if r, ok := rdata.(*http.Request); ok {
@@ -96,12 +95,17 @@ func (event *CQEvent) ReadJSON(msg interface{}) error{
 // MessageType 获取消息类型
 // 只有在post_type类型为message时有用
 func (event *CQEvent) MessageType() string {
-	msg := event.BodyMap()
+	msg := event.Map()
 	return msg["message_type"].(string)
 }
-// BodyMap 获取map消息
-func (event *CQEvent) BodyMap() map[string]interface{} {
-	var msg map[string]interface{}
-	json.Unmarshal(event.ctx.Value(ByteData).([]byte), &msg)
-	return msg
+// Map 获取map消息
+func (event *CQEvent) Map() map[string]interface{} {	
+	return loadintomap(event.Value(ByteData).([]byte))
+}
+
+func loadintomap(data []byte) (res map[string]interface{}) {
+	decode := json.NewDecoder(bytes.NewReader(data))
+	decode.UseNumber()
+	decode.Decode(&res)
+	return
 }
