@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"bytes"
+	"fmt"
 )
 
 // CQEvent 酷Q上报事件结构
@@ -15,39 +16,32 @@ type CQEvent struct {
 	ctx context.Context
 	handler []CQEventHandler
 	hlength int
+	flag bool
 }
-
+// String 打印消息
+func (event CQEvent) String() string{
+	return string(event.Value(ByteData).([]byte))
+}
 // CQEventHandler 上报数据处理函数
-type CQEventHandler func(receive *CQEvent)
+type CQEventHandler func(receive CQEvent)
 
-// newEvent 生成一个新的事件
-func newEvent(ctx context.Context) CQEvent{
-	var res CQEvent
-	res.ctx = ctx
-	wdata := res.ctx.Value(WriterKey)
-	if w, ok := wdata.(http.ResponseWriter); ok{
-		res.writer = w
-	}
-	rdata := res.ctx.Value(RequestKey)
-	if r, ok := rdata.(*http.Request); ok {
-		res.req = r
-	}
-	return res
-}
-
-func (event *CQEvent) write(data []byte) (int, error){	
+func (event CQEvent) write(data []byte) (int, error){	
 	return event.writer.Write(data)
 }
-func (event *CQEvent) header() http.Header{
+func (event CQEvent) header() http.Header{
 	return event.writer.Header()
 }
-func (event *CQEvent) writerHeader(statusCode int) {
+func (event CQEvent) writerHeader(statusCode int) {
 	event.writer.WriteHeader(statusCode)
 }
 // JSON 快速响应JSON数据
-func (event *CQEvent) JSON(data map[string]interface{}) (int, error){
+func (event CQEvent) JSON(statuscode int, data map[string]interface{}) (int, error){
+	if event.flag{
+		return 0, fmt.Errorf("amy http response error: already response")
+	}
+	event.flag = true
 	event.header().Set("Content-type", "application/json")
-	event.writerHeader(200)
+	event.writerHeader(statuscode)
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return 0, err
@@ -55,10 +49,8 @@ func (event *CQEvent) JSON(data map[string]interface{}) (int, error){
 	return event.write(bytes)
 }
 
-// context相关函数
-
 // Value 获取值
-func (event *CQEvent) Value(key interface{}) interface{}{
+func (event CQEvent) Value(key interface{}) interface{}{
 	return event.ctx.Value(key)
 }
 // Set 设置ctx值
@@ -66,7 +58,7 @@ func (event *CQEvent) Set(key interface{}, value interface{}) {
 	event.ctx = context.WithValue(event.ctx, key, value)
 }
 // Next 调用下一个handler
-func (event *CQEvent) Next() {
+func (event CQEvent) Next() {
 	if event.hlength == 0{
 		return
 	}
@@ -83,23 +75,20 @@ func (event *CQEvent) Body() []byte{
 func (event *CQEvent) reqHeader() http.Header{
 	return event.req.Header
 }
-// FormValue 获取表单字段
-func (event *CQEvent) FormValue(key string) string{
-	return event.req.FormValue(key)
-}
+
 // ReadJSON 将数据解析到msg中
-func (event *CQEvent) ReadJSON(msg interface{}) error{
+func (event CQEvent) ReadJSON(msg interface{}) error{
 	data := event.Value(ByteData).([]byte)
 	return json.Unmarshal(data, msg)
 }
 // MessageType 获取消息类型
 // 只有在post_type类型为message时有用
-func (event *CQEvent) MessageType() string {
+func (event CQEvent) MessageType() string {
 	msg := event.Map()
 	return msg["message_type"].(string)
 }
 // Map 获取map消息
-func (event *CQEvent) Map() map[string]interface{} {	
+func (event CQEvent) Map() map[string]interface{} {	
 	return loadintomap(event.Value(ByteData).([]byte))
 }
 
