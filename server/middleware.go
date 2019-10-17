@@ -55,9 +55,9 @@ func (bot *Bot) ParseMessage(event CQEvent){
 		bot.requestHandler(event)
 		break
 	default:
-		event.JSON(204, nil)
 		break
 	}
+	event.JSON(204, nil)
 	return
 }
 
