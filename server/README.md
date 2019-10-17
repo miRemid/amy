@@ -34,7 +34,13 @@ func main() {
 }
 ```
 ### 注意
-如果用户在处理业务逻辑时没有响应CQHTTP，会默认返回204给CQHTTP
+如果用户在处理业务逻辑时没有响应CQHTTP，且服务端的Parse函数为默认值，会默认返回204给CQHTTP。`bot.Register`注册消息处理的函数只有在执行`bot.SetParse(bot.ParseMessage)`或默认时有效。
+```golang
+// SetParse 设置消息最初处理函数
+// 自带的ParseMessage会将消息进行分层，转发到普通消息、提示、请求处理函数中
+// 通过bot.Register注册以上三个函数
+bot.SetParse(bot.ParseMessage)
+```
 ## 中间件
 你可以对每一个事件注册中间件处理，比如消息的认证，判定权限等，需要注意的是，注册中间件需要按照顺序执行，切必须在注册函数前执行,中间件结构为`func Handler(event server.CQEvent)`
 ```golang
