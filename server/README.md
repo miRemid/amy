@@ -16,8 +16,8 @@ func MessageHandler(event server.CQEvent) {
         event.ReadJSON(&msg)
         // 如果消息为”你好“
         if msg.RawMessage == "你好"{
-            // 可以快速回复，响应数据详见CQHTTP文档
-            event.JSON(message.CQJSON{
+            // 响应CQHTTP
+            event.JSON(200, message.CQJSON{
                 "reply": "You too~~",
             })
         }
@@ -33,6 +33,8 @@ func main() {
     bot.Run(":3000", "/")
 }
 ```
+### 注意
+如果用户在处理业务逻辑时没有响应CQHTTP，会默认返回204给CQHTTP
 ## 中间件
 你可以对每一个事件注册中间件处理，比如消息的认证，判定权限等，需要注意的是，注册中间件需要按照顺序执行，切必须在注册函数前执行,中间件结构为`func Handler(event server.CQEvent)`
 ```golang
