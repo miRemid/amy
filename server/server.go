@@ -36,26 +36,13 @@ type Bot struct {
 }
 
 // Hello 你好
-func Hello(event *CQEvent) {
-	msgtype := event.MessageType()
-	if msgtype == "private"{
-		var msg message.CQPrivate
-		event.ReadJSON(&msg)
-		if msg.RawMessage == "你好"{
-			if n, err := event.JSON(message.CQJSON{
-				"reply": "You too~~",
-			}); err != nil {
-				log.Printf("Quick Message Response Failed: %s\n")
-			}else{
-				log.Printf("Quick Message Response Success: %dbytes\n", n)
-			}
-		}
-	}
-}
-
-// PrintMsg 打印消息
-func PrintMsg(event *CQEvent) {
-	fmt.Println(string(event.Value(ByteData).([]byte)))
+func Hello(event CQEvent) {
+	msg := event.Map()
+	if msg["raw_message"] == "你好" {
+		event.JSON(200, message.CQJSON{
+			"reply":"You too~~",
+		})
+	}	
 }
 
 // NewServer 实例化一个Bot对象
@@ -65,8 +52,9 @@ func NewServer() *Bot {
 	var res Bot
 	res.router = mux.NewRouter()
 	res.messageHandler = Hello
-	res.noticeHandler = PrintMsg
-	res.requestHandler = PrintMsg
+	res.parse = res.ParseMessage
+	res.noticeHandler = func(event CQEvent){event.JSON(204, nil)}
+	res.requestHandler = func(event CQEvent){event.JSON(204, nil)}
 	return &res
 }
 
@@ -104,22 +92,6 @@ func (bot *Bot) Register(name string, handler CQEventHandler) error{
 	}
 	return nil
 }
-
-// // RegisterMessage 注册上报消息handler
-// func (bot *Bot) RegisterMessage(handler CQEventHandler) {
-// 	bot.messageHandler = handler
-// }
-
-// // RegisterNotice 注册通知消息handler
-// func (bot *Bot) RegisterNotice(handler CQEventHandler) {
-// 	bot.noticeHandler = handler
-// }
-
-// // RegisterRequest 注册请求消息handler
-// func (bot *Bot) RegisterRequest(handler CQEventHandler) {
-// 	bot.requestHandler = handler
-// }
-
 
 // Run 建立一个http服务
 // 在开启服务之前，需要绑定事件上报处理函数
