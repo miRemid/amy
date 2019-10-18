@@ -1,0 +1,30 @@
+{
+    "amymq":{
+        "channel":{
+            "main": 50,
+            "message": 20,
+            "notice": 10,
+            "request": 10
+        }
+    },
+    "cmds":"!！",
+    "cqhttp_url": "http://127.0.0.1",
+    "cqhttp_port": 5700,
+    "post_url": "http://127.0.0.1:8080/api/coolq",
+    "message":{
+        "method": "post",
+        "url": "",
+        "router": "/message"
+    },
+    "notice":{
+        "method": "post",
+        "url": "",
+        "router": "/notice"    
+    },
+    "request":{
+        "method": "post",
+        "url": "",
+        "router": "/request"    
+    },
+    "timeout": 10000
+}
