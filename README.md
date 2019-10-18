@@ -56,7 +56,16 @@ msg := cqmsg.CQJSON{
 }
 ```
 具体配置详见[CQHTTP文档](https://cqhttp.cc/docs/4.11/#/Message)
+# AmyMQ
+可以在Release中下载AmyMQ进行消息队列转发，请按照`amy/amymq`文件夹中的config进行配置.
+AmyMQ目前还在完善中，只适配英文开头的标准命令格式`cmd params`，消息转发过程如下：
+```
+发送消息: hello 你好
+CQHTTP: 接受消息->转发到AmyMQ
+AmyMQ: 接受消息->处理消息加入队列->分析消息(cmd:hello)->转发消息到"http://你的AmyMQ配置项/hello"
+```
+[config.json配置项详情](https://github.com/miRemid/amy/tree/master/amymq)
 # TODO
 - 覆盖CQHTTP所有常用HTTP API(已完成)
 - 创建轻量级Serve端(v0.0.1)
-- AmyMQ消息队列处理服务
+- AmyMQ消息队列处理服务(v0.0.1)
