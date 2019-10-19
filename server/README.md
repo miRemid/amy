@@ -17,7 +17,7 @@ func MessageHandler(event server.CQEvent) {
         // 如果消息为”你好“
         if msg.RawMessage == "你好"{
             // 响应CQHTTP
-            event.JSON(200, message.CQJSON{
+            event.JSON(200, message.CQMAP{
                 "reply": "You too~~",
             })
         }

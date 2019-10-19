@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"fmt"
-	"errors"
 	// "bytes"
 	"encoding/json"
 )
@@ -19,8 +18,7 @@ const (
 	JSONMarshalFailed
 )
 
-// URL 生成发送的URL
-func (api *API) URL(router string, asyc bool) string {
+func (api *API) url(router string, asyc bool) string {
 	url := fmt.Sprintf("http://%s:%d/%s", api.CQHTTP, api.CQPORT, router)
 	if asyc{
 		url = url + "_async"
@@ -29,11 +27,7 @@ func (api *API) URL(router string, asyc bool) string {
 	return url
 }
 
-// Send 发送消息
-// msg 发送的消息
-// url 发送的api
-// cr 返回的消息管道
-func (api *API) Send(msg cqmsg.CQMessage, url string, cr CResponse) {
+func (api *API) send(msg cqmsg.CQMessage, url string, cr CResponse) {	
 	if cr == nil {
 		cr = make(CResponse, 1)
 	}
@@ -57,11 +51,6 @@ func (api *API) Send(msg cqmsg.CQMessage, url string, cr CResponse) {
 	if api.Token != ""{
 		req.Header.Add("Authorization", "Bearer " + api.Token)
 	}
-	if err != nil {		
-		response.Error = err
-		cr <- response		
-		return
-	}
 	// 发送请求
 	resp, err := api.Client.Do(req)
 	if err != nil {
@@ -79,99 +68,116 @@ func (api *API) Send(msg cqmsg.CQMessage, url string, cr CResponse) {
 		cr <- response		
 		return
 	}
-	response.Error = errors.New("http client do request failed")
+	response.Error = fmt.Errorf("请求API失败, url=%s, 状态码: %d", url, resp.StatusCode)
 	cr <- response			
 }
 
 // sendHandler 消息相应处理助手
-func (api *API) sendHandler(res Response) (response cqmsg.CQMessageID, ok bool){
+func (api *API) sendHandler(res Response) (response cqmsg.CQMessageID, err error){
 	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s\n", SendReqFailed, res.Error.Error())
+		err = res.Error
 		return
 	}
-	if err := json.Unmarshal(res.Reader, &response); err != nil {
-		log.Printf("Amy Error[%d]:%s\n", JSONMarshalFailed, err.Error())
+	if e := json.Unmarshal(res.Reader, &response); e != nil {
+		err = e
 		return
 	}
-	return response, true
+	return response, nil
+}
+
+// Send 发送消息，根据flag值判断发送类型
+// to 目标方id， msg
+func (api *API) Send(to int, msg interface{}, auto, async bool, flag uint) (response cqmsg.CQMessageID, ok error){
+	switch flag{
+	case Private:
+		msg := cqmsg.DefaultBuilder.PrivateMsg(to, msg, auto)
+		return api.SendPrivateMsg(msg, async)
+	case Group:
+		msg := cqmsg.DefaultBuilder.GroupMsg(to, msg, auto)
+		return api.SendGroupMsg(msg, async)
+	case Discuss:
+		msg := cqmsg.DefaultBuilder.DiscussMsg(to, msg, auto)
+		return api.SendDiscussMsg(msg, async)
+	default:
+		return response, fmt.Errorf("wrong flag")
+	}
 }
 
 // SendRaw 原生发送消息
-func (api *API) SendRaw(msg cqmsg.CQRawMsg, async bool) (response cqmsg.CQMessageID, ok bool) {
+func (api *API) SendRaw(msg cqmsg.CQRawMsg, async bool) (response cqmsg.CQMessageID, ok error) {
 	c := make(CResponse, 1)
-	go api.Send(msg, api.URL("send_msg", async), c)	
+	go api.send(msg, api.url("send_msg", async), c)	
 	return api.sendHandler(<- c)
 }
 
 // SendPrivateMsg 发送私人消息
-func (api *API) SendPrivateMsg(msg cqmsg.CQPrivateMsg, async bool) (response cqmsg.CQMessageID, ok bool) {
+func (api *API) SendPrivateMsg(msg cqmsg.CQPrivateMsg, async bool) (response cqmsg.CQMessageID, ok error) {
 	c := make(CResponse, 1)
-	go api.Send(msg, api.URL("send_private_msg", async), c)		
+	go api.send(msg, api.url("send_private_msg", async), c)		
 	return api.sendHandler(<- c)
 }
 
 // SendGroupMsg 发送群组消息
-func (api *API) SendGroupMsg(msg cqmsg.CQGroupMsg, async bool) (response cqmsg.CQMessageID, ok bool) {
+func (api *API) SendGroupMsg(msg cqmsg.CQGroupMsg, async bool) (response cqmsg.CQMessageID, ok error) {
 	c := make(CResponse, 1)
-	go api.Send(msg, api.URL("send_group_msg", async), c)
+	go api.send(msg, api.url("send_group_msg", async), c)
 	return api.sendHandler(<- c)
 }
 
 // SendDiscussMsg 发送讨论组消息
-func (api *API) SendDiscussMsg(msg cqmsg.CQDiscussMsg, async bool) (response cqmsg.CQMessageID, ok bool) {
+func (api *API) SendDiscussMsg(msg cqmsg.CQDiscussMsg, async bool) (response cqmsg.CQMessageID, ok error) {
 	c := make(CResponse, 1)
-	go api.Send(msg, api.URL("send_discuss_msg", async), c)
+	go api.send(msg, api.url("send_discuss_msg", async), c)
 	return api.sendHandler(<- c)
 }
 
 
 
-
 // noEchoHandler 无响应请求助手
-func (api *API) noEchoHandler(msg cqmsg.CQJSON, router string, async bool) bool {	
+func (api *API) noEchoHandler(msg cqmsg.CQMAP, router string, async bool) error {	
 	c := make(CResponse, 1)
-	go api.Send(msg, api.URL(router, async), c)
+	go api.send(msg, api.url(router, async), c)
 	res := <- c
-	return res.Error == nil	
+	return res.Error
 }
 
 // CQHTTPRestart 重启CQHTTP插件
-func (api *API) CQHTTPRestart(delay int, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) CQHTTPRestart(delay int, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"delay": delay,
 	}, "set_restart_plugin", async)
 }
 
 // CQHTTPCleanData 清理数据目录
-func (api *API) CQHTTPCleanData(dir string, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) CQHTTPCleanData(dir string, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"data_dir": dir,
 	}, "clean_data_dir ", async)
 }
 
 // CQHTTPCleanLog 清理插件日志
-func (api *API) CQHTTPCleanLog(async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{},"clean_plugin_log", async)
+func (api *API) CQHTTPCleanLog(async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{},"clean_plugin_log", async)
 }
 
 // DeleteMsg 撤回消息
-func (api *API) DeleteMsg(id int, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) DeleteMsg(id int, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"message_id": id,
 	}, "delete_msg", async)	
 }
 
 // SendLike 发送好友赞
-func (api *API) SendLike(userid uint, times int, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SendLike(userid uint, times int, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"user_id": userid,
 		"times":	times,
 	}, "send_like", async)
 }
 
 // GroupKick 群组踢人
-func (api *API) GroupKick(groupid uint, userid uint, reject, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) GroupKick(groupid uint, userid uint, reject, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"user_id":	userid,
 		"reject_add_request": reject,
@@ -179,8 +185,8 @@ func (api *API) GroupKick(groupid uint, userid uint, reject, async bool) bool {
 }
 
 // GroupBan 群组禁言
-func (api *API) GroupBan(groupid uint, userid uint, duration int, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) GroupBan(groupid uint, userid uint, duration int, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"user_id":	userid,
 		"duration": duration,
@@ -189,8 +195,8 @@ func (api *API) GroupBan(groupid uint, userid uint, duration int, async bool) bo
 
 // GroupAnoymousBan 匿名禁言
 // Flag 参数为消息上报中的参数
-func (api *API) GroupAnoymousBan(groupid uint, flag string, duration int, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) GroupAnoymousBan(groupid uint, flag string, duration int, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"flag":	flag,
 		"duration": duration,
@@ -198,16 +204,16 @@ func (api *API) GroupAnoymousBan(groupid uint, flag string, duration int, async 
 }
 
 // GroupWholeBan 全体禁言
-func (api *API) GroupWholeBan(groupid uint, enable, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) GroupWholeBan(groupid uint, enable, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"enable": enable,
 	}, "set_group_whole_ban", async)
 }
 
 // SetGroupAdmin 设置管理员
-func (api *API) SetGroupAdmin(groupid uint, userid uint, enable, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetGroupAdmin(groupid uint, userid uint, enable, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"user_id": userid,
 		"enable": enable,
@@ -215,16 +221,16 @@ func (api *API) SetGroupAdmin(groupid uint, userid uint, enable, async bool) boo
 }
 
 // SetGroupAnoymous 设置群组匿名
-func (api *API) SetGroupAnoymous(groupid uint, enable, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetGroupAnoymous(groupid uint, enable, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"enable": enable,
 	}, "set_group_anonymous", async)
 }
 
 // SetGroupCard 设置群名片
-func (api *API) SetGroupCard(groupid uint, userid uint, card string, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetGroupCard(groupid uint, userid uint, card string, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"user_id": userid,
 		"card": card,
@@ -233,16 +239,16 @@ func (api *API) SetGroupCard(groupid uint, userid uint, card string, async bool)
 
 // SetGroupLeave 退群
 // isDismiss 是否解散，如果登录号是群主，则仅在此项为 true 时能够解散
-func (api *API) SetGroupLeave(groupid uint, isDismiss, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetGroupLeave(groupid uint, isDismiss, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,		
 		"is_dismiss": isDismiss,
 	}, "set_group_leave", async)
 }
 
 // SetGroupSpecialTitle 设置专属头衔
-func (api *API) SetGroupSpecialTitle(groupid uint, userid uint, title string, duration int, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetGroupSpecialTitle(groupid uint, userid uint, title string, duration int, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"group_id": groupid,		
 		"user_id": userid,
 		"special_title": title,
@@ -251,15 +257,15 @@ func (api *API) SetGroupSpecialTitle(groupid uint, userid uint, title string, du
 }
 
 // SetDiscussLeave 退讨论组
-func (api *API) SetDiscussLeave(discussid uint, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetDiscussLeave(discussid uint, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"discuss_id": discussid,		
 	}, "set_discuss_leave", async)
 }
 
 // SetFriendAddRequest 处理加好友请求
-func (api *API) SetFriendAddRequest(flag, remark string, approve, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetFriendAddRequest(flag, remark string, approve, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"flag": flag,
 		"remark": remark,
 		"approve": approve,
@@ -267,8 +273,8 @@ func (api *API) SetFriendAddRequest(flag, remark string, approve, async bool) bo
 }
 
 // SetGroupAddRequest 处理加群请求
-func (api *API) SetGroupAddRequest(flag, subtype, reason string, approve, async bool) bool {
-	return api.noEchoHandler(cqmsg.CQJSON{
+func (api *API) SetGroupAddRequest(flag, subtype, reason string, approve, async bool) error {
+	return api.noEchoHandler(cqmsg.CQMAP{
 		"flag": flag,
 		"reason": reason,
 		"approve": approve,
@@ -283,167 +289,107 @@ func (api *API) SetGroupAddRequest(flag, subtype, reason string, approve, async 
 
 
 // GetHandler 获取信息助手
-func (api *API) getHandler(msg cqmsg.CQJSON, router string, async bool) Response{
+func (api *API) getHandler(msg cqmsg.CQMAP, router string, async bool) Response{
 	c := make(CResponse, 1)
-	go api.Send(msg, api.URL(router, async), c)
+	go api.send(msg, api.url(router, async), c)
 	return <- c
 }
 
+func gethandler(r Response, m interface{}) (error) {
+	if r.Error != nil {
+		return r.Error
+	}
+	err := json.Unmarshal(r.Reader, &m)
+	if err != nil{
+		return err
+	}
+	return nil
+}
+
 // GetLoginInfo 获取登陆账号信息
-func (api *API) GetLoginInfo(async bool) (response cqmsg.CQLoginInfo, ok bool){
-	res := api.getHandler(cqmsg.CQJSON{}, "get_login_info", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err !=nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+func (api *API) GetLoginInfo(async bool) (cqmsg.CQLoginInfo, error){
+	var response cqmsg.CQLoginInfo
+	res := api.getHandler(cqmsg.CQMAP{}, "get_login_info", async)
+	err := gethandler(res, &response)
+	return response, err
 }
 
 // GetStrangerInfo 获取他人信息
-func (api *API) GetStrangerInfo(userid uint, cache, async bool) (response cqmsg.CQStrangerInfo, ok bool){
-	res := api.getHandler(cqmsg.CQJSON{
+func (api *API) GetStrangerInfo(userid uint, cache, async bool) (response cqmsg.CQStrangerInfo, ok error){
+	res := api.getHandler(cqmsg.CQMAP{
 		"user_id": userid,
 		"no_cache": cache,
 	}, "get_stranger_info", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err !=nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetGroupList 获取群组列表
-func (api *API) GetGroupList(async bool) (response cqmsg.CQGroupList, ok bool){
-	res := api.getHandler(cqmsg.CQJSON{}, "get_group_list", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err !=nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+func (api *API) GetGroupList(async bool) (response cqmsg.CQGroupList, ok error){
+	res := api.getHandler(cqmsg.CQMAP{}, "get_group_list", async)
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetGroupMemberInfo 获取群成员信息
-func (api *API) GetGroupMemberInfo(groupid uint, userid uint, cache, async bool) (response cqmsg.CQGroupMember, ok bool){
-	res := api.getHandler(cqmsg.CQJSON{
+func (api *API) GetGroupMemberInfo(groupid uint, userid uint, cache, async bool) (response cqmsg.CQGroupMember, ok error){
+	res := api.getHandler(cqmsg.CQMAP{
 		"group_id": groupid,
 		"user_id": userid,
 		"cache": cache,
 	}, "get_group_member_info", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetGroupMemberList 获取群成员列表
-func (api *API) GetGroupMemberList(groupid uint, async bool) (response cqmsg.CQGroupMemberList, ok bool){
-	res := api.getHandler(cqmsg.CQJSON{
+func (api *API) GetGroupMemberList(groupid uint, async bool) (response cqmsg.CQGroupMemberList, ok error){
+	res := api.getHandler(cqmsg.CQMAP{
 		"group_id": groupid,		
 	}, "get_group_member_list", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetCookies 获取cookies
-func (api *API) GetCookies(domain string, async bool) (response cqmsg.CQCookiesInfo, ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{
+func (api *API) GetCookies(domain string, async bool) (response cqmsg.CQCookiesInfo, ok error) {
+	res := api.getHandler(cqmsg.CQMAP{
 		"domain": domain,
 	}, "get_cookies", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetCSRFToken 获取CSRF认证token
-func (api *API) GetCSRFToken(async bool) (response cqmsg.CQCRFSTokenInfo, ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{}, "get_csrf_token", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}	
-	return response, true
+func (api *API) GetCSRFToken(async bool) (response cqmsg.CQCRFSTokenInfo, ok error) {
+	res := api.getHandler(cqmsg.CQMAP{}, "get_csrf_token", async)
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetRecord 获取语音
-func (api *API) GetRecord(file, format string, fullPath, async bool) (response cqmsg.CQRecodeInfo, ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{
+func (api *API) GetRecord(file, format string, fullPath, async bool) (response cqmsg.CQRecodeInfo, ok error) {
+	res := api.getHandler(cqmsg.CQMAP{
 		"file": file,
 		"out_format": format,
 		"full_path": fullPath,
 	}, "get_record", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}	
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetImage 获取图片
-func (api *API) GetImage(file string, async bool) (response cqmsg.CQImageInfo, ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{
+func (api *API) GetImage(file string, async bool) (response cqmsg.CQImageInfo, ok error) {
+	res := api.getHandler(cqmsg.CQMAP{
 		"file": file,		
 	}, "get_image", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}	
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+	ok = gethandler(res, &response)
+	return 
 }
 
 // CanSendImage 检查是否能发送图片
 func (api *API) CanSendImage(async bool) (ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{}, "can_send_image", async)
+	res := api.getHandler(cqmsg.CQMAP{}, "can_send_image", async)
 	if res.Error != nil {
 		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
 		return
@@ -458,31 +404,15 @@ func (api *API) CanSendImage(async bool) (ok bool) {
 }
 
 // GetStatus 检查插件运行状态
-func (api *API) GetStatus(async bool) (response cqmsg.CQHTTPStatus, ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{}, "get_status", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+func (api *API) GetStatus(async bool) (response cqmsg.CQHTTPStatus, ok error) {
+	res := api.getHandler(cqmsg.CQMAP{}, "get_status", async)
+	ok = gethandler(res, &response)
+	return 
 }
 
 // GetVersion 获取版本信息
-func (api *API) GetVersion(async bool) (response cqmsg.CQHTTPVersion, ok bool) {
-	res := api.getHandler(cqmsg.CQJSON{}, "get_version_info", async)
-	if res.Error != nil {
-		log.Printf("Amy Error[%d]:%s", SendReqFailed, res.Error.Error())
-		return
-	}
-	err := json.Unmarshal(res.Reader, &response)
-	if err != nil {
-		log.Printf("Amy Error[%d]:%s", JSONMarshalFailed, err.Error())
-		return
-	}
-	return response, true
+func (api *API) GetVersion(async bool) (response cqmsg.CQHTTPVersion, ok error) {
+	res := api.getHandler(cqmsg.CQMAP{}, "get_version_info", async)
+	ok = gethandler(res, &response)
+	return 
 }

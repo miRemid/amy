@@ -30,6 +30,15 @@ const (
 	RetInitError = 201
 )
 
+var (
+	// DefaultBuilder 默认构造器
+	DefaultBuilder *CQMsgBuilder
+)
+
+func init() {
+	DefaultBuilder = NewCQMsgBuilder()
+}
+
 // CQSender 消息发送方信息
 type CQSender struct {
 	// UserID 用户id

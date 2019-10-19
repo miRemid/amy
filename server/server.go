@@ -39,7 +39,7 @@ type Bot struct {
 func Hello(event CQEvent) {
 	msg := event.Map()
 	if msg["raw_message"] == "你好" {
-		event.JSON(200, message.CQJSON{
+		event.JSON(200, message.CQMAP{
 			"reply":"You too~~",
 		})
 	}	

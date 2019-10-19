@@ -13,8 +13,26 @@ type CQMessage interface{
 	Value() (*bytes.Reader, error)
 }
 
-// CQJSON json格式数据
-type CQJSON map[string]interface{}
+// CQMAP map
+type CQMAP map[string]interface{}
+
+// CQJSON 消息段
+type CQJSON struct{
+	Type string					`json:"type"`
+	Data map[string]interface{}	`json:"data"`
+}
+
+// CQArray array格式数据
+type CQArray []CQJSON
+
+// Value 返回http可发送的消息
+func (m CQMAP) Value() (*bytes.Reader, error) {
+	byteData, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(byteData), nil
+}
 
 // CQSendMsgBase 每条发送的消息通用的字段
 type CQSendMsgBase struct {
@@ -78,15 +96,6 @@ type CQRawMsg struct {
 
 // Value 返回http可发送的消息
 func (m CQRawMsg) Value() (*bytes.Reader, error) {
-	byteData, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(byteData), nil
-}
-
-// Value 返回http可发送的消息
-func (m CQJSON) Value() (*bytes.Reader, error) {
 	byteData, err := json.Marshal(m)
 	if err != nil {
 		return nil, err

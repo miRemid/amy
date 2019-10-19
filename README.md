@@ -1,5 +1,5 @@
 # Amy
-Amy是一个轻量级cqhttp的go版sdk，目前使用文档较乱，将会逐步改正
+Amy是一个轻量级cqhttp的go版sdk，目前使用文档较乱，将会逐步整理
 # install
 使用前请安装[酷Q](https://cqp.cc/)和[CQHTTP](https://cqhttp.cc/docs/4.11/#/)
 ```
@@ -17,42 +17,59 @@ func main(){
     // 创建消息生成器
     builder := message.NewCQMsgBuilder()
     // 创建一条私人信息
+    // 发送给123456789，消息为”test"，true表明消息是否需要转义，仅字符串消息有效
     msg := builder.PrivateMsg(123456789, "test", true)
     // 发送私人信息
-	if res, ok := api.SendPrivateMsg(msg, false); ok {
-		fmt.Println(res.ID)
-	}else{
-		fmt.Println("Send Failed")
+    if res, ok := api.SendPrivateMsg(msg, false); ok {
+        fmt.Println(res.ID)
+    }else{
+        fmt.Println("Send Failed")
     }
+
+    // 当然也可以直接通过flag发送消息
+    // 1234565为目标id，"test"为消息内容，true为消息是否需要转义仅字符串有效，false表示是否调用异步api，amy.Private标识该消息类型为私人消息
+    api.Send(1234565, "test", true, false, amy.Private)
     // 检查能否发送图片
-	if ok := api.CanSendImage(false); ok {
-		fmt.Println("Can")
-	}else{
-		fmt.Println("No")
-	}
+    if ok := api.CanSendImage(false); ok {
+        fmt.Println("Can")
+    }else{
+        fmt.Println("No")
+    }
 }
 ```
-其中，消息不仅限于字符串形式，推荐字符串形式发送
-```
+其中，消息不仅限于字符串形式
+```golang
+// 字符串
 msg := "String"
-msg := cqmsg.CQJSON{
+// 消息块
+/*
+{
     "type":"text",
-    "data":{"text":"test"}
+    "data":{
+        "text":"hello"
+    }
 }
-// 数组模式正在完善中
-msg := cqmsg.CQJSON{
-    cqmsg.CQJSON{
-            "type":"text",
-            "data":JSONMsg{
-            "text":"test1",
+*/
+msg := cqmsg.CQJSON("text", "text", "hello")
+// 消息块数组
+/*
+[
+    {
+        "type":"text",
+        "data":{
+            "text":"hello"
         }
-    },
-    cqmsg.CQJSON{
-            "type":"text",
-            "data":JSONMsg{
-            "text":"test2",
+    },{
+        "type":"face",
+        "data":{
+            "id":"111"
         }
-    },
+    }
+]
+*/
+msg := cqmsg.CQArray{
+    cqmsg.CQJSON("text", "text", "hello"),
+    cqmsg.CQJSON("face", "id", "111"),
 }
 ```
 具体配置详见[CQHTTP文档](https://cqhttp.cc/docs/4.11/#/Message)
