@@ -7,7 +7,7 @@
             "request": 10
         }
     },
-    "cmds":"!！",
+    "cmds":["!", "！", "#"],
     "cqhttp_url": "http://127.0.0.1",
     "cqhttp_port": 5700,
     "post_url": "http://127.0.0.1:8080/api/coolq",
@@ -27,5 +27,6 @@
         "router": "/request"    
     },
     "timeout": 10000,
-    "log_path": "./log"
+    "log_path": "./log",
+    "secret": "amy"
 }
