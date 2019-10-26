@@ -13,8 +13,8 @@
     },
     // 配置命令开头格式，不符合格式将过滤
     "cmds":["!", "！", "#"],
-    // CQHTTP插件地址端口(目前没啥用)
-    "cqhttp_url": "http://127.0.0.1",
+    // CQHTTP插件地址端口
+    "cqhttp_url": "127.0.0.1",
     "cqhttp_port": 5700,
     // 上报地址模板
     "post_url": "http://127.0.0.1:8080/api/coolq",
@@ -28,7 +28,7 @@
     },
     "notice":{
         "method": "post",
-        "url": "",
+        "url": "http://api.qqbot.hahaha",
         "router": "/notice"    
     },
     "request":{

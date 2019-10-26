@@ -8,7 +8,7 @@
         }
     },
     "cmds":["!", "！", "#"],
-    "cqhttp_url": "http://127.0.0.1",
+    "cqhttp_url": "127.0.0.1",
     "cqhttp_port": 5700,
     "post_url": "http://127.0.0.1:8080/api/coolq",
     "message":{

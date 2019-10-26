@@ -73,6 +73,18 @@ msg := cqmsg.CQArray{
 }
 ```
 具体配置详见[CQHTTP文档](https://cqhttp.cc/docs/4.11/#/Message)
+## CQ码
+Amy中可以生成CQ码
+```golang
+import "github.com/miRemid/amy/cqcode"
+
+// [CQ:text,file=asdf]
+cq := cqcode.CqCode("text", cqcode.CQParams{
+    "file": "asdf",
+})
+// [CQ:face,id=1]
+face := cqcode.Face(1)
+```
 # AmyMQ
 可以在Release中下载AmyMQ进行消息队列转发，请按照`amy/amymq`文件夹中的config进行配置.
 AmyMQ目前还在完善中，只适配英文开头的标准命令格式`cmd params`，消息转发过程如下：
