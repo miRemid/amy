@@ -85,6 +85,24 @@ cq := cqcode.CqCode("text", cqcode.CQParams{
 // [CQ:face,id=1]
 face := cqcode.Face(1)
 ```
+# 服务端
+在`amy/server`中可以创建一个小型服务器，具体请见[server](https://github.com/miRemid/amy/tree/master/server)
+# WebSocket
+用`amy/websocket`可以创建一个小型websocket服务器
+```golang
+import "github.com/miRemid/amy/websocket"
+import "github.com/miRemid/amy/websocket/model"
+
+func main(){
+    client := websocket.NewClient("127.0.0.1", 6700)
+    client.OnMessage(func(evt model.CQEvent){
+        log.Println(evt.Type)
+        log.Println(string(evt.Body))
+    })
+    client.Run()
+}
+
+```
 # AmyMQ
 可以在Release中下载AmyMQ进行消息队列转发，请按照`amy/amymq`文件夹中的config进行配置.
 AmyMQ目前还在完善中，只适配英文开头的标准命令格式`cmd params`，消息转发过程如下：
