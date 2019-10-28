@@ -1,5 +1,14 @@
 Amy是一个轻量级cqhttp的go版sdk，目前使用文档较乱，将会逐步整理
-[toc]
+- [安装](#安装)
+- [使用](#使用)
+    - [初步](#初步)
+    - [消息格式](#消息格式)
+    - [CQ码](#cq码)
+    - [服务端](#服务端)
+    - [Http](#http)
+    - [WebSocket](#websocket)
+    - [AmyMQ](#amymq)
+- [TODO](#todo)
 # 安装
 使用前请安装[酷Q](https://cqp.cc/)和[CQHTTP](https://cqhttp.cc/docs/4.11/#/)
 ```
