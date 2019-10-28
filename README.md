@@ -88,16 +88,26 @@ face := cqcode.Face(1)
 # 服务端
 在`amy/server`中可以创建一个小型服务器，具体请见[server](https://github.com/miRemid/amy/tree/master/server)
 # WebSocket
-用`amy/websocket`可以创建一个小型websocket服务器
+已支持websocket，`github.com/miRemid/amy/websocket`
 ```golang
 import "github.com/miRemid/amy/websocket"
 import "github.com/miRemid/amy/websocket/model"
+import "log"
 
 func main(){
+    api := websocket.NewAPIClient("127.0.0.1", 6700)
+    api.OnResponse(func(evt model.CQResponse){
+        log.Printf(evt.Status)
+    })
     client := websocket.NewClient("127.0.0.1", 6700)
-    client.OnMessage(func(evt model.CQEvent){
+    client.OnMessage(func(evt model.CQEvent){        
         log.Println(evt.Type)
-        log.Println(string(evt.Body))
+        log.Println(evt.Map)
+        if msg := evt.Map["raw_message"].(string); msg == "hello" {
+            if t := evt.Map["message_type"].(string); t == "private"{
+                api.Send("send_private_msg", "hello")
+            }
+        }
     })
     client.Run()
 }

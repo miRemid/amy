@@ -12,3 +12,10 @@ func LoadIntoMap(data []byte) (res map[string]interface{}) {
 	decode.Decode(&res)
 	return
 }
+
+// LoadIntoStruct return a error
+func LoadIntoStruct(data []byte, v interface{}) error{
+	decode := json.NewDecoder(bytes.NewReader(data))
+	decode.UseNumber()
+	return decode.Decode(&v)
+}
