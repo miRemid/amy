@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"log"
+	"fmt"
 	"github.com/miRemid/amy/websocket/model"
 )
 
@@ -25,15 +26,23 @@ func NewClient(url string, port int) *Client{
 
 // Run will open a websocket client
 func (c *Client) Run() {	
-	c.Connect("event")
+	c.Connect()
 	for {
 		_, body, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Printf("read error:%v", err)
+			continue
 		}
 		evt := model.NewCQEvent(body)
 		go c.message(evt)
 	}
+}
+
+// Connect to the ws server
+func (c *Client) Connect() {
+	url := fmt.Sprintf("ws://%s:%d/event/", c.url, c.port)
+	log.Printf("Event Connect:%s", url)
+	c.baseClient.Connect(url, nil)
 }
 
 // OnMessage will set the message parse function

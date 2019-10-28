@@ -95,20 +95,26 @@ import "github.com/miRemid/amy/websocket/model"
 import "log"
 
 func main(){
-    api := websocket.NewAPIClient("127.0.0.1", 6700)
+    // url, port, access_token(if not use "")
+    api := websocket.NewAPIClient("127.0.0.1", 6700, "")
     api.OnResponse(func(evt model.CQResponse){
         log.Printf(evt.Status)
     })
     client := websocket.NewClient("127.0.0.1", 6700)
-    client.OnMessage(func(evt model.CQEvent){        
-        log.Println(evt.Type)
-        log.Println(evt.Map)
+    client.OnMessage(func(evt model.CQEvent){                
         if msg := evt.Map["raw_message"].(string); msg == "hello" {
             if t := evt.Map["message_type"].(string); t == "private"{
-                api.Send("send_private_msg", "hello")
+                go api.Send("send_private_msg", model.CQParams{
+					"user_id": 351968703,
+					"message": "hello",
+				})
+				api.Send("send_private_msg", model.CQParams{
+					"user_id": 351968703,
+					"message": "hello",
+				})
             }
         }
-    })
+	})
     client.Run()
 }
 

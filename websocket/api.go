@@ -2,7 +2,9 @@ package websocket
 
 import (
 	"log"
+	"fmt"
 	"sync"
+	"net/http"
 	"github.com/miRemid/amy/websocket/model"
 )
 
@@ -16,16 +18,27 @@ type APIClient struct {
 }
 
 // NewAPIClient return a new APIClient
-func NewAPIClient(url string, port int) *APIClient{
+func NewAPIClient(url string, port int, token string) *APIClient{
 	var client APIClient
 	client.url = url
 	client.port = port
-	client.token = ""
+	client.token = token
 	client.handler = func(res model.CQResponse){
 		log.Printf(res.Status)
 	}
 	return &client
 }
+
+// Connect to the ws server
+func (c *APIClient) Connect() {
+	url := fmt.Sprintf("ws://%s:%d/api/", c.url, c.port)
+	var header http.Header
+	if c.token != "" {
+		header["Authorization"]	= []string{fmt.Sprintf("Bearer %s", c.token)}		
+	}
+	c.baseClient.Connect(url, header)
+}
+
 
 // SetToken set your access_token
 func (c *APIClient) SetToken(token string) {
@@ -37,6 +50,7 @@ func (c *APIClient) receive(wg *sync.WaitGroup) {
 		_, body, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Printf("read error:%v", err)
+			continue
 		}
 		if res, err := model.NewCQResponse(body); err != nil {
 			log.Printf("parse error:%v", err)
@@ -52,7 +66,7 @@ func (c *APIClient) receive(wg *sync.WaitGroup) {
 func (c *APIClient) Send(api string, params model.CQParams) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	c.Connect("api")
+	c.Connect()
 	go c.receive(&wg)
 	go func(wg *sync.WaitGroup){
 		msg := model.CQMessage{
@@ -61,7 +75,7 @@ func (c *APIClient) Send(api string, params model.CQParams) {
 		}
 		c.conn.WriteJSON(&msg)
 		wg.Done()
-	}(&wg)
+	}(&wg)	
 	wg.Wait()
 }
 

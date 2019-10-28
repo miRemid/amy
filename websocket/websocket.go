@@ -2,8 +2,7 @@ package websocket
 
 import (
 	"net/http"
-	"github.com/gorilla/websocket"
-	"fmt"
+	"github.com/gorilla/websocket"	
 	"log"
 )
 
@@ -14,13 +13,7 @@ type baseClient struct{
 	token string
 }
 
-func (c *baseClient) Connect(t string){
-	url := fmt.Sprintf("ws://%s:%d/%s/", c.url, c.port, t)
-	var header http.Header
-	if c.token != "" {
-		header["Authorization"]	= []string{fmt.Sprintf("Bearer %s", c.token)}		
-	}
-	log.Println(url)
+func (c *baseClient) Connect(url string, header http.Header){	
 	conn,_,err := websocket.DefaultDialer.Dial(url, header)
 	if err != nil {
 		log.Fatal(err)
