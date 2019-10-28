@@ -1,12 +1,12 @@
-# Amy
 Amy是一个轻量级cqhttp的go版sdk，目前使用文档较乱，将会逐步整理
-# install
+[toc]
+# 安装
 使用前请安装[酷Q](https://cqp.cc/)和[CQHTTP](https://cqhttp.cc/docs/4.11/#/)
 ```
 git clone https://github.com/miRemid/amy.git
 ```
-# Usage
-## Send Private Message
+# 使用
+## 初步
 ```golang
 import "github.com/miRemid/amy"
 import cqmsg "github.com/miRemid/amy/message"
@@ -37,7 +37,8 @@ func main(){
     }
 }
 ```
-其中，消息不仅限于字符串形式
+## 消息格式
+消息不仅限于字符串形式
 ```golang
 // 字符串
 msg := "String"
@@ -86,8 +87,9 @@ cq := cqcode.CqCode("text", cqcode.CQParams{
 face := cqcode.Face(1)
 ```
 # 服务端
+## Http
 在`amy/server`中可以创建一个小型服务器，具体请见[server](https://github.com/miRemid/amy/tree/master/server)
-# WebSocket
+## WebSocket
 已支持websocket，`github.com/miRemid/amy/websocket`
 ```golang
 import "github.com/miRemid/amy/websocket"
@@ -105,16 +107,16 @@ func main(){
         if msg := evt.Map["raw_message"].(string); msg == "hello" {
             if t := evt.Map["message_type"].(string); t == "private"{
                 go api.Send("send_private_msg", model.CQParams{
-					"user_id": 351968703,
-					"message": "hello",
-				})
-				api.Send("send_private_msg", model.CQParams{
-					"user_id": 351968703,
-					"message": "hello",
-				})
+                    "user_id": 351968703,
+                    "message": "hello",
+                })
+                api.Send("send_private_msg", model.CQParams{
+                    "user_id": 351968703,
+                    "message": "hello",
+                })
             }
         }
-	})
+    })
     client.Run()
 }
 
