@@ -20,8 +20,8 @@ type APIClient struct {
 // NewAPIClient return a new APIClient
 func NewAPIClient(url string, port int, token string) *APIClient{
 	var client APIClient
-	client.url = url
-	client.port = port
+	client.URL = url
+	client.Port = port
 	client.token = token
 	client.handler = func(res model.CQResponse){
 		log.Printf(res.Status)
@@ -31,14 +31,13 @@ func NewAPIClient(url string, port int, token string) *APIClient{
 
 // Connect to the ws server
 func (c *APIClient) Connect() {
-	url := fmt.Sprintf("ws://%s:%d/api/", c.url, c.port)
+	url := fmt.Sprintf("ws://%s:%d/api/", c.URL, c.Port)
 	var header http.Header
 	if c.token != "" {
 		header["Authorization"]	= []string{fmt.Sprintf("Bearer %s", c.token)}		
 	}
 	c.baseClient.Connect(url, header)
 }
-
 
 // SetToken set your access_token
 func (c *APIClient) SetToken(token string) {

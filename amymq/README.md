@@ -1,4 +1,5 @@
 # config.json配置
+config.json文件放在同目录文件的config目录中
 ```json
 {
     // 配置消息管道缓冲大小

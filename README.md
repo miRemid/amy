@@ -4,7 +4,7 @@ Amy是一个轻量级cqhttp的go版sdk，目前使用文档较乱，将会逐步
     - [初步](#初步)
     - [消息格式](#消息格式)
     - [CQ码](#cq码)
-    - [服务端](#服务端)
+- [服务端](#服务端)
     - [Http](#http)
     - [WebSocket](#websocket)
     - [AmyMQ](#amymq)
@@ -104,17 +104,49 @@ face := cqcode.Face(1)
 import "github.com/miRemid/amy/websocket"
 import "github.com/miRemid/amy/websocket/model"
 import "log"
+func main(){
+    // 创建总客户端，默认api和event地址端口一致，token为空
+    client := websocket.NewCQClient("127.0.0.1", 6700)
+    // 设置api响应处理函数
+    client.OnResponse(func(res model.CQResponse){
+        log.Println(res.Data)
+    })
+    // 单独设置api地址端口
+    // client.SetAPIConfig(apiurl, apiport)
+    // 设置api的token
+    // client.SetToken("token")
+    // 设置event响应处理函数
+    client.OnMessage(func(evt model.CQEvent){
+        if msg := evt.Map["raw_message"].(string); msg == "hello" {
+            if t := evt.Map["message_type"].(string); t == "private"{
+                client.Send("send_private_msg", model.CQParams{
+                    "user_id": 351968703,
+                    "message": "hello",
+                })
+            }
+        }
+    })
+    client.Run()
+}
+```
+你也可以单独创建消息接受和API发送websocket client
+```golang
+import "github.com/miRemid/amy/websocket"
+import "github.com/miRemid/amy/websocket/model"
+import "log"
 
 func main(){
-    // url, port, access_token(if not use "")
+    // api客户端
     api := websocket.NewAPIClient("127.0.0.1", 6700, "")
     api.OnResponse(func(evt model.CQResponse){
         log.Printf(evt.Status)
     })
+    // 消息接收客户端
     client := websocket.NewClient("127.0.0.1", 6700)
     client.OnMessage(func(evt model.CQEvent){                
         if msg := evt.Map["raw_message"].(string); msg == "hello" {
             if t := evt.Map["message_type"].(string); t == "private"{
+                // 每次发送会创建一次连接
                 go api.Send("send_private_msg", model.CQParams{
                     "user_id": 351968703,
                     "message": "hello",
@@ -132,7 +164,7 @@ func main(){
 ```
 # AmyMQ
 可以在Release中下载AmyMQ进行消息队列转发，请按照`amy/amymq`文件夹中的config进行配置.
-AmyMQ目前还在完善中，只适配英文开头的标准命令格式`cmd params`，消息转发过程如下：
+AmyMQ目前还在完善中，只适配英文开头的标准命令格式`[!,#,...]cmd params`，消息转发过程如下：
 ```
 发送消息: !hello 你好
 CQHTTP: 接受消息->转发到AmyMQ
