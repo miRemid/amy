@@ -120,7 +120,7 @@ func main(){
         if msg := evt.Map["raw_message"].(string); msg == "hello" {
             if t := evt.Map["message_type"].(string); t == "private"{
                 client.Send("send_private_msg", model.CQParams{
-                    "user_id": 351968703,
+                    "user_id": 123456,
                     "message": "hello",
                 })
             }
@@ -148,11 +148,11 @@ func main(){
             if t := evt.Map["message_type"].(string); t == "private"{
                 // 每次发送会创建一次连接
                 go api.Send("send_private_msg", model.CQParams{
-                    "user_id": 351968703,
+                    "user_id": 123456,
                     "message": "hello",
                 })
                 api.Send("send_private_msg", model.CQParams{
-                    "user_id": 351968703,
+                    "user_id": 123456,
                     "message": "hello",
                 })
             }
