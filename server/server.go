@@ -3,9 +3,9 @@ package server
 // 轻量级CQHTTP后端服务
 
 import (
-	"net/http"
-	"log"
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/miRemid/amy/message"
 
@@ -26,13 +26,13 @@ type EventMap map[string]interface{}
 
 // Bot 机器人对象
 type Bot struct {
-	scret string					// CQHTTP配置项
-	router *mux.Router				// 路由
-	handlers []CQEventHandler		// 中间件
-	parse	CQEventHandler			// 最终消息处理函数
-	messageHandler 	CQEventHandler	// 普通消息处理函数
-	noticeHandler 	CQEventHandler	// 提示消息处理函数
-	requestHandler 	CQEventHandler	// 请求消息处理函数
+	scret          string           // CQHTTP配置项
+	router         *mux.Router      // 路由
+	handlers       []CQEventHandler // 中间件
+	parse          CQEventHandler   // 最终消息处理函数
+	messageHandler CQEventHandler   // 普通消息处理函数
+	noticeHandler  CQEventHandler   // 提示消息处理函数
+	requestHandler CQEventHandler   // 请求消息处理函数
 }
 
 // Hello 你好
@@ -40,9 +40,9 @@ func Hello(event CQEvent) {
 	msg := event.Map()
 	if msg["raw_message"] == "你好" {
 		event.JSON(200, message.CQMAP{
-			"reply":"You too~~",
+			"reply": "You too~~",
 		})
-	}	
+	}
 }
 
 // NewServer 实例化一个Bot对象
@@ -53,18 +53,18 @@ func NewServer() *Bot {
 	res.router = mux.NewRouter()
 	res.messageHandler = Hello
 	res.parse = res.ParseMessage
-	res.noticeHandler = func(event CQEvent){event.JSON(204, nil)}
-	res.requestHandler = func(event CQEvent){event.JSON(204, nil)}
+	res.noticeHandler = func(event CQEvent) { event.JSON(204, nil) }
+	res.requestHandler = func(event CQEvent) { event.JSON(204, nil) }
 	return &res
 }
 
 // Use 构造中间件链
 func (bot *Bot) Use(handlers ...CQEventHandler) {
-	bot.handlers = append(bot.handlers, handlers...)	
+	bot.handlers = append(bot.handlers, handlers...)
 }
 
 // Signature 开启验证
-func (bot *Bot) Signature(key string){
+func (bot *Bot) Signature(key string) {
 	log.Printf("已开启消息来源验证, Screct=%s\n", key)
 	bot.scret = key
 	bot.Use(bot.signature)
@@ -76,7 +76,7 @@ func (bot *Bot) SetParse(handler CQEventHandler) {
 }
 
 // Register 注册函数
-func (bot *Bot) Register(name string, handler CQEventHandler) error{
+func (bot *Bot) Register(name string, handler CQEventHandler) error {
 	switch name {
 	case KMessage:
 		bot.messageHandler = handler
@@ -98,11 +98,6 @@ func (bot *Bot) Register(name string, handler CQEventHandler) error{
 // addr: 运行域名
 // port: 运行端口
 func (bot *Bot) Run(addr string, router string) {
-	if len(addr) <= 7{
-		log.Printf("Amy Server Run At http://0.0.0.0%s\n", addr)
-	}else{
-		log.Printf("Amy Server Run At http://%s\n", addr)		
-	}
 	bot.Use(bot.parse)
 	bot.router.HandleFunc(router, bot.pack(bot.handlers)).Methods("POST", "GET")
 	err := http.ListenAndServe(addr, bot.router)
