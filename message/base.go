@@ -42,7 +42,7 @@ func init() {
 // CQSender 消息发送方信息
 type CQSender struct {
 	// UserID 用户id
-	UserID		int64	`json:"user_id"`
+	UserID		int		`json:"user_id"`
 	// NickName 用户昵称
 	NickName	string	`json:"nickname"`
 	// Sex 性别
@@ -84,5 +84,5 @@ type CQMsgSegment struct {
 
 // CQMessageID 发送的消息的ID
 type CQMessageID struct {
-	ID	int32	`json:"message_id"`
+	ID	int		`json:"message_id"`
 }

@@ -24,7 +24,7 @@ func (api *API) url(router string, asyc bool) string {
 	if asyc {
 		url = url + "_async"
 	}
-	log.Printf("Url: %s\n", url)
+	log.Printf("请求URL: %s\n", url)
 	return url
 }
 

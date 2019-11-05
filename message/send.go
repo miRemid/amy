@@ -90,8 +90,8 @@ type CQRawMsg struct {
 	CQSendMsgBase
 	MessageType string	`json:"message_type"`
 	DiscussID	int		`json:"discuss_id"`	
-	GroupID	int			`json:"group_id"`	
-	UserID	int			`json:"user_id"`
+	GroupID		int		`json:"group_id"`	
+	UserID		int		`json:"user_id"`
 }
 
 // Value 返回http可发送的消息

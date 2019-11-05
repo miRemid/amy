@@ -15,7 +15,7 @@ type CQLoginInfo struct {
 
 // CQLoginInfoData 登陆数据
 type CQLoginInfoData struct {
-	UserID		int64	`json:"user_id"`
+	UserID		int		`json:"user_id"`
 	NickName	string	`json:"nickname"`
 }
 
@@ -101,7 +101,7 @@ type CQGroupList struct {
 
 // GroupItem 群组列表元素
 type GroupItem struct {
-	GroupID		int64	`json:"group_id"`
+	GroupID		int		`json:"group_id"`
 	GroupName	string	`json:"group_name"`
 }
 
@@ -119,8 +119,8 @@ type CQGroupMemberList struct {
 
 // GroupMemberItem 成员信息
 type GroupMemberItem struct {
-	GroupID				uint	`json:"group_id"`					
-	UserID				uint	`json:"user_id"`
+	GroupID				int		`json:"group_id"`					
+	UserID				int		`json:"user_id"`
 	NickName			string	`json:"nickname"`
 	Card				string	`json:"card"`
 	Sex					string	`json:"sex"`
