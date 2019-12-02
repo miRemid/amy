@@ -35,8 +35,7 @@ type CQSession struct {
 // It will return two string, cmd and params
 // Example: !help Test, give cmds as ["!"], will return help, Test
 func (evt CQSession) Params(cmds ...string) (cmd, params string) {
-	msg := string(evt.Body)
-	return utils.CmdParser(msg, cmds...)
+	return utils.CmdParser(evt.Message, cmds...)
 }
 
 // CQCode will try to parse event's message

@@ -2,6 +2,7 @@ package utils
 
 import "strings"
 
+// CmdParser 解析Cmd命令
 func CmdParser(message string, cmds ...string) (cmd, params string) {
 	msg := strings.TrimSpace(message)
 	split := strings.Split(msg, " ")
