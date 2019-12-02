@@ -1,5 +1,8 @@
 package event
 
+// CQRequest is the CQRequest event struct
 type CQRequest struct {
-	*CQEventBase
+	*CQEvent
+
+	Type string
 }

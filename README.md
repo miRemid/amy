@@ -5,7 +5,8 @@ Amy是一个轻量级cqhttp的go版sdk，目前使用文档较乱，将会逐步
     - [消息格式](#消息格式)
     - [CQ码](#cq码)
 - [服务端](#服务端)
-    - [Http](#http)
+    - [Http:v0.0.1](#http:v0.0.1)
+    - [Http:v0.0.2](#http:v0.0.2)
     - [WebSocket](#websocket)
     - [AmyMQ](#amymq)
 - [TODO](#todo)
@@ -95,9 +96,21 @@ cq := cqcode.CqCode("text", cqcode.CQParams{
 // [CQ:face,id=1]
 face := cqcode.Face(1)
 ```
+Amy中提供了解析CQ码的函数`cqcode.CQSplit`
+```golang
+msg := "asdf[CQ:at,id=fdfsdf]asdf[CQ:at,id=asdfdf]dasfioghfdguihn[CQ:at,id=ghjgfhj]"
+// cqs -> []cqcode.CQCdoee
+cqs := cqcode.CQSplit(msg)
+for _, cqcode := range cqs {
+    fmt.Printf("func=%v,params=%v\n", cqcode.Func, cqcode.Params)
+}
+```
 # 服务端
-## Http
+## Http:v0.0.1
 在`amy/server`中可以创建一个小型服务器，具体请见[server](https://github.com/miRemid/amy/tree/master/server)
+## Http:v0.0.2
+在`amy/tserver`中可以建立一个小型服务器，具体请见[tserver](https://github.com/miRemid/amy/tree/master/tserver)
+这里有一个现成的利用`tserver`建立的Amy框架[Hanabi](https://github.com/miRemid/amy/hanabi)
 ## WebSocket
 已支持websocket，`github.com/miRemid/amy/websocket`
 ```golang
@@ -173,5 +186,5 @@ AmyMQ: 接受消息->处理消息加入队列->分析消息(cmd:hello)->转发�
 [config.json配置项详情](https://github.com/miRemid/amy/tree/master/amymq)
 # TODO
 - 覆盖CQHTTP所有常用HTTP API(已完成)
-- 创建轻量级Serve端(v0.0.1)
+- 创建Serve端(v0.0.2)
 - AmyMQ消息队列处理服务(v0.0.1)

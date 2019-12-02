@@ -18,41 +18,49 @@ import (
 
 func (bot *Bot) pack(handlers ...event.CQEventHandler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		base := &event.CQEventBase{
+		base := &event.CQEvent{
 			API: bot.apipool.Get().(*amy.API),
+			Writer: w,
+			Request: r,
 		}
-		base.SetHTTP(w, r)
 		data, _ := ioutil.ReadAll(r.Body)
 		base.Body = data
-		tmsg := utils.LoadIntoMap(data)
-		// 判断消息类型
-		postType, ok := tmsg["post_type"].(string)
-		if !ok {
-			log.Println("post_type查找失败")
-		}
-		switch postType {
-		case "message":
-			session := toCQSession(tmsg)
-			session.CQEventBase = base
-			session.Use(handlers...)
-			log.Println("CQParse=", session.CQCode())
-			session.Next()
-			break
-		case "notice":
-			break
-		case "request":
-			break
-		}
+		base.Use(handlers...)
+		base.Next()
 	}
 }
 
-func toCQSession(tmsg map[string]interface{}) *event.CQSession {
+func (bot *Bot) convert(evt event.CQEvent) {
+	data := evt.Body
+	tmsg := utils.LoadIntoMap(data)
+	// 判断消息类型
+	postType, ok := tmsg["post_type"].(string)
+	if !ok {
+		log.Println("post_type查找失败")
+	}
+	switch postType {
+	case "message":
+		session := toCQSession(tmsg)
+		session.CQEvent = &evt
+		bot.messageHandler(session)
+		break
+	case "notice":
+		notice := toCQNotice(tmsg)
+		notice.CQEvent = &evt
+		bot.noticeHandler(notice)
+		break
+	case "request":
+		request := toCQRequest(tmsg)
+		request.CQEvent = &evt
+		bot.requestHandler(request)
+		break
+	}
+}
+
+func toCQSession(tmsg map[string]interface{}) event.CQSession {
 	var res event.CQSession
 
-	tsender, ok := tmsg["sender"].(map[string]interface{})
-	if !ok {
-		return &res
-	}
+	tsender := tmsg["sender"].(map[string]interface{})
 	var sender message.CQSender
 	sender.NickName = tsender["nickname"].(string)
 	sender.Sex = tsender["sex"].(string)
@@ -66,13 +74,26 @@ func toCQSession(tmsg map[string]interface{}) *event.CQSession {
 	res.Message = tmsg["message"].(string)
 	res.RawMessage = tmsg["raw_message"].(string)
 
-	return &res
+	return res
 }
 
+func toCQNotice(tmsg map[string]interface{}) event.CQNotice {
+	var res event.CQNotice
+	res.Type = tmsg["notice_type"].(string)
+	return res
+}
+
+func toCQRequest(tmsg map[string]interface{}) event.CQRequest {
+	var res event.CQRequest
+	res.Type = tmsg["notice_type"].(string)
+	return res
+}
+
+// Signature 消息验证中间件
 func Signature(key string) event.CQEventHandler {
 	log.Printf("以开启Signature验证, key=%v\n", key)
 	return func(evt event.CQEvent) {
-		sig := evt.ReqHeader().Get("X-Signature")
+		sig := evt.Request.Header.Get("X-Signature")
 		if sig == "" {
 			log.Println("未找到X-Signature头部信息，请检查CQHTTP配置")
 			evt.JSON(204, nil)
@@ -80,7 +101,7 @@ func Signature(key string) event.CQEventHandler {
 		}
 		sig = sig[len("sha1="):]
 		mac := hmac.New(sha1.New, []byte(key))
-		byteData := evt.GetBody()
+		byteData := evt.Body
 
 		io.WriteString(mac, string(byteData))
 		res := fmt.Sprintf("%x", mac.Sum(nil))

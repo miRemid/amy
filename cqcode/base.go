@@ -3,6 +3,10 @@ package cqcode
 import (
 	"fmt"
 	"strings"
+	"regexp"
+)
+var (
+	reg = regexp.MustCompile(`\[CQ:(.*?)\]`)
 )
 
 // CQCode CQ码
@@ -40,6 +44,16 @@ func CQParse(cqstr string) (code CQCode) {
 	for _, v := range list[1:] {
 		params := strings.Split(v, "=")
 		code.Params[string(params[0])] = string(params[1])
+	}
+	return
+}
+
+// CQSplit 在字符串中查找并解析CQ码
+func CQSplit(message string) (res []CQCode) {
+	res = make([]CQCode, 0)
+	str := reg.FindAllString(message, -1)
+	for _, v := range str {
+		res = append(res, CQParse(v))
 	}
 	return
 }

@@ -12,8 +12,17 @@ import (
 	"github.com/miRemid/amy/tserver/event"
 )
 
+const (
+	// Message Event Flag
+	Message = iota
+	// Notice Event Flag
+	Notice
+	// Request Event Flag
+	Request
+)
+
+// Bot client
 type Bot struct {
-	Screct      string
 	AccessToken string
 	Timeout     int
 
@@ -24,25 +33,61 @@ type Bot struct {
 	apiURL  string
 	apiport int
 
-	MessageHandler event.CQEventHandler
-	NoticeHandler  event.CQEventHandler
-	RequestHandler event.CQEventHandler
+	messageHandler CQSessionHandler
+	noticeHandler  CQNoticeHandler
+	requestHandler CQRequestHandler
 }
 
+// NewBot return a Bot client
 func NewBot(apiURL string, port int) *Bot {
 	var res Bot
 	res.handlers = make([]event.CQEventHandler, 0)
 	res.router = mux.NewRouter()
 	res.apiURL = apiURL
 	res.apiport = port
+
+	res.messageHandler = messageHandler
+	res.noticeHandler = noticeHandler
+	res.requestHandler = requestHandler
+
 	return &res
 }
 
-func (bot *Bot) Use(handler event.CQEventHandler) {
-	bot.handlers = append(bot.handlers, handler)
+// Use sevral handlers as middlware
+func (bot *Bot) Use(handler ...event.CQEventHandler) {
+	bot.handlers = append(bot.handlers, handler...)
 }
 
-func (bot *Bot) Run(addr string, router string) {
+// On set the event hanlder, flag should from tserver.Message,tserver.Notice,tserver.Request
+func (bot *Bot) On(handler interface{}, flag int) {
+	switch flag {
+	case Message:
+		if middle, ok := handler.(func (evt event.CQSession)); ok {
+			bot.messageHandler = middle
+		}else {
+			log.Fatal("Handler参数错误")
+		}
+		break
+	case Notice:
+		if middle, ok := handler.(func (evt event.CQNotice)); ok {
+			bot.noticeHandler = middle
+		}else {
+			log.Fatal("Handler参数错误")
+		}
+		break
+	case Request:
+		if middle, ok := handler.(func (evt event.CQRequest)); ok {
+			bot.requestHandler = middle
+		}else {
+			log.Fatal("Handler参数错误")
+		}
+		break
+	}
+}
+
+// Run a http server at addr/router
+func (bot *Bot) Run(addr string, router string, handlers ...event.CQEventHandler) {
+	bot.Use(handlers...)
 	bot.apipool = &sync.Pool{
 		New: func() interface{} {
 			res := amy.NewAmyAPI(bot.apiURL, bot.apiport)
@@ -53,9 +98,7 @@ func (bot *Bot) Run(addr string, router string) {
 			return res
 		},
 	}
-	if bot.Screct != "" {
-		bot.Use(Signature(bot.Screct))
-	}
+	bot.Use(bot.convert)
 	bot.router.HandleFunc(router, bot.pack(bot.handlers...)).Methods("POST", "GET")
 	err := http.ListenAndServe(addr, bot.router)
 	if err != nil {
