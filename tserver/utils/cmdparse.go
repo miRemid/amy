@@ -3,12 +3,12 @@ package utils
 import "strings"
 
 // CmdParser 解析Cmd命令
-func CmdParser(message string, cmds ...string) (cmd, params string) {
+func CmdParser(message string, cmds ...string) (cmd string, params []string) {
 	msg := strings.TrimSpace(message)
 	split := strings.Split(msg, " ")
 	tcmd := split[0]
 	if tcmd == "" {
-		return "", ""
+		return "", nil
 	}
 	for _, v := range cmds {
 		if len(v) == len(tcmd) && v != tcmd || len(v) > len(tcmd) {
@@ -20,9 +20,9 @@ func CmdParser(message string, cmds ...string) (cmd, params string) {
 			}
 			cmd = tcmd[len(v):]
 			if len(split) == 1 {
-				params = ""
+				params = nil
 			} else {
-				params = msg[len(cmd)+1:]
+				params = split[1:]
 			}
 			break
 		}

@@ -22,11 +22,11 @@ type CQSession struct {
 	*CQEvent
 	// Type is the message's type
 	// Private;Group;Discuss
-	Type       string
+	Type string
 	// Sender is the message sender's infomation struct
-	Sender     message.CQSender
+	Sender message.CQSender
 	// Message is the cqhttp parse message from raw qq message
-	Message    string
+	Message string
 	// RawMessage is the raw qq message
 	RawMessage string
 }
@@ -34,7 +34,7 @@ type CQSession struct {
 // Params will try to parse event's message by cmds
 // It will return two string, cmd and params
 // Example: !help Test, give cmds as ["!"], will return help, Test
-func (evt CQSession) Params(cmds ...string) (cmd, params string) {
+func (evt CQSession) Params(cmds ...string) (cmd string, params []string) {
 	return utils.CmdParser(evt.Message, cmds...)
 }
 
